@@ -77,10 +77,14 @@ the hook path written into the agent config points back at it.
 ```
 secret set <KEY>              store a new secret (prompted, hidden)
 secret update <KEY>           replace an existing one
+secret rename <OLD> <NEW>     give it a different name
 secret rm <KEY>               forget it
 secret list [--all] [filter]  names only, never values
 secret show <KEY>             show the value in a dialog, never in the terminal
 secret adopt <service>        use a keychain item another app created
+secret fingerprint <KEY>      a short digest, safe to paste anywhere
+secret verify <KEY>           is the value on stdin the one <KEY> holds?
+secret diff <KEY> <KEY>       do two keys hold the same value?
 secret run <KEY>... -- <cmd>  run <cmd> with the secrets in its environment
 secret init [host]            install the guard hook, with consent
 secret help
@@ -113,6 +117,27 @@ An adopted item stays the property of the app that created it. This tool reads
 it and can forget it; `update` and `rm` will not write to or delete it. macOS
 will ask your permission the first time it is read, which is the keychain's own
 access control and is not bypassed.
+
+### Is this the same secret?
+
+The question that tempts everyone into pasting "just the first few characters" of
+a live credential into a chat window. A prefix is permanent once it is in a
+transcript, and it narrows a brute force. Ask it properly instead.
+
+```sh
+secret fingerprint CLEARANCE_DEV_SECRET        # local:c6cc8e3003c9
+secret diff CLEARANCE_DEV_SECRET OLD_SECRET    # match / no match, exit 0 / 1
+
+# against a value from somewhere else, without it passing through anyone
+az keyvault secret show --name CCP-PURPLEID-CLIENT-SECRET --query value -o tsv \
+  | secret verify CLEARANCE_DEV_SECRET
+```
+
+A fingerprint is an HMAC salted with a key generated once per machine, so two
+fingerprints are only comparable where they were made. That matters: an unsalted
+hash of a low-entropy value is not safe to paste, because the value can be
+guessed and the hash checked. Use `--global` for the plain `sha256` when two
+machines genuinely have to agree — it warns when you do.
 
 ### Reading one yourself
 
@@ -170,7 +195,7 @@ against an agent that is actively trying to get around it.
 
 ```sh
 brew install bats-core shellcheck
-bats tests/          # 148 behavioral tests
+bats tests/          # 187 behavioral tests
 shellcheck bin/secret lib/*.sh hosts/*.sh hooks/*.sh
 ```
 

@@ -17,14 +17,24 @@ teardown() { teardown_isolated_env; }
   # tool can do goes in this list at the same time as it goes in the code.
   run secret --help
   assert_success
-  for token in set update rm list --all show adopt --as --account \
+  for token in set update rm rename list --all show adopt --as --account \
+               fingerprint --global verify diff \
                run -- --no-scrub init --list-hosts --uninstall help --version; do
     assert_output_contains "$token"
   done
 }
 
+@test "the readme documents every subcommand" {
+  # The readme going stale is the other half of the drift problem. A command
+  # that exists and is undocumented fails here.
+  for cmd in set update rename rm list show adopt fingerprint verify diff run init; do
+    grep -q "secret $cmd" "$SECRET_CLI_ROOT/README.md" ||
+      { printf 'readme does not mention: secret %s\n' "$cmd" >&2; return 1; }
+  done
+}
+
 @test "every subcommand named in help is actually accepted" {
-  for cmd in set update rm list show adopt run init; do
+  for cmd in set update rm rename list show adopt fingerprint verify diff run init; do
     run secret "$cmd"
     refute_output_contains "unknown command"
   done
