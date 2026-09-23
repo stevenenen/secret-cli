@@ -1,0 +1,30 @@
+{"desc":"listing files","tool_name":"Bash","tool_input":{"command":"ls -la"}}
+{"desc":"git status","tool_name":"Bash","tool_input":{"command":"git status --short"}}
+{"desc":"installing dependencies","tool_name":"Bash","tool_input":{"command":"npm install"}}
+{"desc":"running the test suite","tool_name":"Bash","tool_input":{"command":"bats tests/"}}
+{"desc":"env is not blocked — secrets only exist inside a run child","tool_name":"Bash","tool_input":{"command":"env | grep JAVA_HOME"}}
+{"desc":"printenv is not blocked","tool_name":"Bash","tool_input":{"command":"printenv PATH"}}
+{"desc":"echoing an ordinary variable","tool_name":"Bash","tool_input":{"command":"echo $HOME"}}
+{"desc":"listing secret names","tool_name":"Bash","tool_input":{"command":"secret list"}}
+{"desc":"the intended way to use a secret","tool_name":"Bash","tool_input":{"command":"secret run GH_TOKEN -- curl -H \"Authorization: Bearer $GH_TOKEN\" https://api.github.com/user"}}
+{"desc":"storing a secret","tool_name":"Bash","tool_input":{"command":"secret set GH_TOKEN"}}
+{"desc":"security with no subcommand","tool_name":"Bash","tool_input":{"command":"security help"}}
+{"desc":"listing keychains exposes no secret material","tool_name":"Bash","tool_input":{"command":"security list-keychains"}}
+{"desc":"cat a dotenv example","tool_name":"Bash","tool_input":{"command":"cat .env.example"}}
+{"desc":"cat a dotenv sample","tool_name":"Bash","tool_input":{"command":"cat .env.sample"}}
+{"desc":"cat a dotenv template","tool_name":"Bash","tool_input":{"command":"cat config/.env.template"}}
+{"desc":"cat a readme","tool_name":"Bash","tool_input":{"command":"cat README.md"}}
+{"desc":"mentioning a dotenv file without reading it","tool_name":"Bash","tool_input":{"command":"echo 'remember to add the key to .env'"}}
+{"desc":"committing a message that names a dotenv example","tool_name":"Bash","tool_input":{"command":"git commit -m 'document .env.example'"}}
+{"desc":"reading docs about ssh","tool_name":"Bash","tool_input":{"command":"cat docs/ssh-setup.md"}}
+{"desc":"reading a public key","tool_name":"Bash","tool_input":{"command":"cat ~/.ssh/id_ed25519.pub"}}
+{"desc":"grepping source for a todo","tool_name":"Bash","tool_input":{"command":"grep -rn TODO src/"}}
+{"desc":"Read tool on a dotenv example","tool_name":"Read","tool_input":{"file_path":".env.example"}}
+{"desc":"Read tool on a dotenv dist","tool_name":"Read","tool_input":{"file_path":".env.dist"}}
+{"desc":"Read tool on source","tool_name":"Read","tool_input":{"file_path":"src/config.ts"}}
+{"desc":"Read tool on a manifest","tool_name":"Read","tool_input":{"file_path":"package.json"}}
+{"desc":"Read tool on a public key","tool_name":"Read","tool_input":{"file_path":"/Users/someone/.ssh/id_ed25519.pub"}}
+{"desc":"Read tool on the ssh config","tool_name":"Read","tool_input":{"file_path":"/Users/someone/.ssh/config"}}
+{"desc":"Read tool on a keystore documentation page","tool_name":"Read","tool_input":{"file_path":"docs/keychain.md"}}
+{"desc":"Grep in the source tree","tool_name":"Grep","tool_input":{"pattern":"createClient","path":"src"}}
+{"desc":"writing ordinary source","tool_name":"Write","tool_input":{"file_path":"src/index.ts","content":"export const x = 1"}}

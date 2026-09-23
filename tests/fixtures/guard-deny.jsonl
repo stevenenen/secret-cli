@@ -1,0 +1,30 @@
+{"desc":"direct keychain read by service name","tool_name":"Bash","tool_input":{"command":"security find-generic-password -w -s secret-cli.TOKEN"}}
+{"desc":"keychain read with account and service reordered","tool_name":"Bash","tool_input":{"command":"security -q find-generic-password -a $USER -s secret-cli.TOKEN -w"}}
+{"desc":"keychain read by absolute path to the binary","tool_name":"Bash","tool_input":{"command":"/usr/bin/security find-generic-password -w -s secret-cli.TOKEN"}}
+{"desc":"keychain read with irregular whitespace","tool_name":"Bash","tool_input":{"command":"security    find-generic-password   -w  -s  secret-cli.TOKEN"}}
+{"desc":"keychain read hidden behind a pipeline","tool_name":"Bash","tool_input":{"command":"echo hi && security find-generic-password -w -s secret-cli.TOKEN | tee /tmp/x"}}
+{"desc":"internet password read","tool_name":"Bash","tool_input":{"command":"security find-internet-password -w -s github.com"}}
+{"desc":"whole keychain dump","tool_name":"Bash","tool_input":{"command":"security dump-keychain -d"}}
+{"desc":"keychain export","tool_name":"Bash","tool_input":{"command":"security export -k login.keychain -t certs"}}
+{"desc":"reading the keychain file directly","tool_name":"Bash","tool_input":{"command":"cat ~/Library/Keychains/login.keychain-db"}}
+{"desc":"cat a dotenv file","tool_name":"Bash","tool_input":{"command":"cat .env"}}
+{"desc":"cat a dotenv variant","tool_name":"Bash","tool_input":{"command":"cat config/.env.local"}}
+{"desc":"copy a dotenv file elsewhere","tool_name":"Bash","tool_input":{"command":"cp .env /tmp/x"}}
+{"desc":"read a dotenv file through python","tool_name":"Bash","tool_input":{"command":"python3 -c \"print(open('.env').read())\""}}
+{"desc":"cat aws credentials","tool_name":"Bash","tool_input":{"command":"cat ~/.aws/credentials"}}
+{"desc":"cat an ssh private key","tool_name":"Bash","tool_input":{"command":"cat ~/.ssh/id_rsa"}}
+{"desc":"cat an ed25519 private key","tool_name":"Bash","tool_input":{"command":"cat /Users/someone/.ssh/id_ed25519"}}
+{"desc":"cat netrc","tool_name":"Bash","tool_input":{"command":"cat ~/.netrc"}}
+{"desc":"cat git credentials","tool_name":"Bash","tool_input":{"command":"cat ~/.git-credentials"}}
+{"desc":"cat kube config","tool_name":"Bash","tool_input":{"command":"cat ~/.kube/config"}}
+{"desc":"base64 encode a pem file","tool_name":"Bash","tool_input":{"command":"base64 certs/server.pem"}}
+{"desc":"head a private key file","tool_name":"Bash","tool_input":{"command":"head -5 tls/server.key"}}
+{"desc":"Read tool on a dotenv file","tool_name":"Read","tool_input":{"file_path":".env"}}
+{"desc":"Read tool on a dotenv variant","tool_name":"Read","tool_input":{"file_path":"config/.env.local"}}
+{"desc":"Read tool on an ssh private key","tool_name":"Read","tool_input":{"file_path":"/Users/someone/.ssh/id_ed25519"}}
+{"desc":"Read tool on aws credentials","tool_name":"Read","tool_input":{"file_path":"/Users/someone/.aws/credentials"}}
+{"desc":"Read tool on the keychain file","tool_name":"Read","tool_input":{"file_path":"/Users/someone/Library/Keychains/login.keychain-db"}}
+{"desc":"Read tool on a pem file","tool_name":"Read","tool_input":{"file_path":"certs/server.pem"}}
+{"desc":"Read tool on a pkcs12 bundle","tool_name":"Read","tool_input":{"file_path":"cert.p12"}}
+{"desc":"Read tool on npmrc","tool_name":"Read","tool_input":{"file_path":"/Users/someone/.npmrc"}}
+{"desc":"Grep inside the ssh directory","tool_name":"Grep","tool_input":{"pattern":"PRIVATE","path":"/Users/someone/.ssh"}}

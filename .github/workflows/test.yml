@@ -1,0 +1,10 @@
+name: test
+on: [push, pull_request]
+jobs:
+  bats:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install bats-core shellcheck
+      - run: shellcheck -x -e SC1091 bin/secret lib/*.sh hosts/*.sh hooks/*.sh install.sh
+      - run: bats tests/
