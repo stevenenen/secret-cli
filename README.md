@@ -85,7 +85,13 @@ secret init [host]            install the guard hook, with consent
 secret help
 ```
 
-Keys are environment variable names, because that is what they become.
+A key has to be a valid environment variable name — `GH_TOKEN`, not `gh-token` —
+because `run` sets one variable per key you name on that invocation.
+
+Nothing is exported globally. The variables exist only inside the process tree
+of that one command, only for the keys you listed, and only for as long as it
+runs. Your shell never sees them, no shell profile is touched, and the secrets
+you did not name are not injected.
 
 ```sh
 # several at once
