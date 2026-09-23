@@ -15,10 +15,30 @@ _cc_validate() {
     die "$CC_SETTINGS is not valid JSON — fix it first, nothing was changed"
 }
 
+_cc_installed() {
+  [ -f "$CC_SETTINGS" ] || return 1
+  python3 - "$CC_SETTINGS" <<'PY'
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+except Exception:
+    raise SystemExit(1)
+found = any("secret-guard" in h.get("command", "")
+            for e in d.get("hooks", {}).get("PreToolUse", [])
+            for h in e.get("hooks", []))
+raise SystemExit(0 if found else 1)
+PY
+}
+
 host_describe_install() {
   _cc_validate
   info "Claude Code"
   info ""
+  if _cc_installed; then
+    info "  status  already installed"
+  else
+    info "  status  not installed"
+  fi
   info "  file    $CC_SETTINGS"
   info "  add     a PreToolUse hook running $CC_HOOK"
   info "  on      $CC_MATCHER"

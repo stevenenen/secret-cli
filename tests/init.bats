@@ -67,6 +67,21 @@ print(n)' "$SETTINGS"
   assert_equal "$(hook_count)" "0"
 }
 
+@test "a dry run says the guard is not installed yet" {
+  existing_settings
+  run secret init claude-code --dry-run
+  assert_success
+  assert_output_contains "not installed"
+}
+
+@test "a dry run says so once the guard is installed" {
+  existing_settings
+  secret init claude-code --yes
+  run secret init claude-code --dry-run
+  assert_success
+  assert_output_contains "already installed"
+}
+
 @test "init asks before writing and does nothing when refused" {
   existing_settings
   run bash -c 'printf "n\n" | secret init claude-code'
