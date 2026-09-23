@@ -21,10 +21,9 @@ reads becomes part of its transcript, and a transcript is not a scratchpad:
 So `echo $GH_TOKEN`, `cat .env`, and `security find-generic-password -w -s …` are
 not conveniences. They are how a token ends up somewhere you never intended.
 
-Keeping secrets out of the shell profile is a solved problem — `envchain`,
-`op run`, `summon`, `aws-vault` all do it. What none of them do is assume the
-thing running the command is an LLM that reads the output. That is the gap this
-fills.
+Keeping a secret out of your shell profile is only half of it. The other half is
+assuming the thing running the command is a model that reads the output, and
+building for that. That is what this does.
 
 ## How
 
@@ -127,8 +126,7 @@ against an agent that is actively trying to get around it.
 - **Derived values are not scrubbed.** If a command prints the decoded claims of
   a JWT, the claims are not the token and go through.
 - **The environment is visible to the child's descendants.** That is what
-  injection means. Anything the child runs can read the value, exactly as with
-  `envchain`, `op run` or `summon`.
+  injection means: anything the command runs can read the value.
 - **A short value is not scrubbed at all.** Under six characters, redaction
   would mangle unrelated output. `set` warns when you store one.
 
@@ -147,15 +145,6 @@ Each test gets a throwaway keychain, so the suite cannot touch a real credential
 
 The guard's spec is the three corpora in `tests/fixtures/`: payloads that must
 be denied, payloads that must be left alone, and the known gaps above.
-
-## Prior art
-
-[`envchain`](https://github.com/sorah/envchain) is the same storage-and-inject
-idea and predates this by a decade; if you do not need the scrubbing or the
-guard, use it instead. [`summon`](https://github.com/cyberark/summon),
-[`teller`](https://github.com/tellerops/teller), 1Password's `op run` and
-[`aws-vault`](https://github.com/99designs/aws-vault) all solve the injection
-half for their own stores.
 
 ## License
 
