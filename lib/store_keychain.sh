@@ -109,3 +109,25 @@ store_del() {
   done
   return 0
 }
+
+# --- items another application created ---------------------------------------
+# Read only, and read raw: a foreign item holds whatever its owner put there,
+# not our base64. Nothing here writes to or deletes one.
+
+store_has_foreign() {
+  local kc; kc="$(_kc_args)"
+  if [ -n "$kc" ]; then
+    security find-generic-password -a "$2" -s "$1" "$kc" >/dev/null 2>&1
+  else
+    security find-generic-password -a "$2" -s "$1" >/dev/null 2>&1
+  fi
+}
+
+store_get_foreign() {
+  local kc; kc="$(_kc_args)"
+  if [ -n "$kc" ]; then
+    security find-generic-password -a "$2" -s "$1" -w "$kc" 2>/dev/null
+  else
+    security find-generic-password -a "$2" -s "$1" -w 2>/dev/null
+  fi
+}

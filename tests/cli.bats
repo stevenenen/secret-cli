@@ -53,6 +53,18 @@ teardown() { teardown_isolated_env; }
   assert_equal "$output" "[ALPHA][BRAVO]"
 }
 
+@test "list finds its index with no SECRET_CLI_HOME in the environment" {
+  # A real install has no SECRET_CLI_HOME set, so the config location comes
+  # from HOME. The helpers are separate processes; if the path is not exported
+  # to them they look in the working directory and list comes back empty.
+  local fake="$TEST_TMP/fakehome"
+  mkdir -p "$fake"
+  env -u SECRET_CLI_HOME -u XDG_CONFIG_HOME "HOME=$fake" \
+    bash -c 'printf %s "a-value-here" | secret set HOMED' >/dev/null
+  run env -u SECRET_CLI_HOME -u XDG_CONFIG_HOME "HOME=$fake" secret list
+  assert_equal "$output" "HOMED"
+}
+
 @test "the cli works when the config directory does not exist yet" {
   rm -rf "$SECRET_CLI_HOME"
   run secret list

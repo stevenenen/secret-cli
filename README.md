@@ -78,11 +78,47 @@ the hook path written into the agent config points back at it.
 secret set <KEY>              store a new secret (prompted, hidden)
 secret update <KEY>           replace an existing one
 secret rm <KEY>               forget it
-secret list                   names only, never values
+secret list [--all] [filter]  names only, never values
+secret show <KEY>             show the value in a dialog, never in the terminal
+secret adopt <service>        use a keychain item another app created
 secret run <KEY>... -- <cmd>  run <cmd> with the secrets in its environment
 secret init [host]            install the guard hook, with consent
 secret help
 ```
+
+### Finding things
+
+`list` takes a filter that matches three ways, best first: a substring, the
+initials of the `SNAKE_CASE` parts, or the letters in order with gaps.
+
+```sh
+secret list tok       # substring    -> GH_TOKEN
+secret list cpa       # initials     -> CXS_PROD_APIKEY
+secret list ghtn      # subsequence  -> GH_TOKEN
+```
+
+`--all` adds every other item in your keychain, marked `unmanaged`, in three
+tab-separated columns with your own keys first. It reads attributes only, so no
+password is fetched and no access dialog appears.
+
+### Using a credential another app already stored
+
+```sh
+secret list --all | grep -i somevendor    # find it
+secret adopt com.somevendor.api --as VENDOR_KEY
+secret run VENDOR_KEY -- ./deploy.sh
+```
+
+An adopted item stays the property of the app that created it. This tool reads
+it and can forget it; `update` and `rm` will not write to or delete it. macOS
+will ask your permission the first time it is read, which is the keychain's own
+access control and is not bypassed.
+
+### Reading one yourself
+
+`secret show <KEY>` puts the value in a macOS dialog. It is on screen for you
+and never in the terminal, so it cannot reach scrollback, a pipe, or an agent's
+tool output. Nothing is copied to the clipboard.
 
 A key has to be a valid environment variable name — `GH_TOKEN`, not `gh-token` —
 because `run` sets one variable per key you name on that invocation.
@@ -134,7 +170,7 @@ against an agent that is actively trying to get around it.
 
 ```sh
 brew install bats-core shellcheck
-bats tests/          # 98 behavioral tests
+bats tests/          # 145 behavioral tests
 shellcheck bin/secret lib/*.sh hosts/*.sh hooks/*.sh
 ```
 

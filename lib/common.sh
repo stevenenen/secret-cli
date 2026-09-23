@@ -6,6 +6,11 @@ SECRET_CLI_VERSION="0.1.0"
 
 : "${SECRET_CLI_HOME:=${XDG_CONFIG_HOME:-$HOME/.config}/secret-cli}"
 : "${SECRET_CLI_SERVICE_PREFIX:=secret-cli.}"
+# Exported because the python helpers are separate processes and read these
+# from the environment. Setting without exporting makes them silently look in
+# the wrong place, which is a bug the test suite cannot see — its harness
+# exports them itself.
+export SECRET_CLI_HOME SECRET_CLI_SERVICE_PREFIX
 
 # Values shorter than this cannot be scrubbed out of a child's output without
 # mangling unrelated text, so `run` will not redact them.

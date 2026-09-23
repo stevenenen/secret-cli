@@ -33,6 +33,13 @@ put_secret() {
   printf '%s' "$2" | secret set "$1" >/dev/null 2>&1
 }
 
+# An item some other application put in the keychain: raw value, no base64,
+# none of our attributes. The value goes on the command line because this is a
+# throwaway fixture, not a real credential.
+put_foreign() {
+  security add-generic-password -a "$2" -s "$1" -w "$3" "$SECRET_CLI_KEYCHAIN" >/dev/null 2>&1
+}
+
 # Read a stored value back, for round-trip assertions. Uses --no-scrub so the
 # value survives, and drops stderr so the --no-scrub warning does not land in
 # $output alongside it.
