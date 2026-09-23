@@ -12,11 +12,21 @@ teardown() { teardown_isolated_env; }
   [[ "$output" =~ [0-9]+\.[0-9]+\.[0-9]+ ]]
 }
 
-@test "help names every subcommand" {
+@test "help names every subcommand and every flag" {
+  # Help drifting behind the code is the failure this catches. Anything the
+  # tool can do goes in this list at the same time as it goes in the code.
   run secret --help
   assert_success
-  for cmd in set update rm list run init; do
-    assert_output_contains "$cmd"
+  for token in set update rm list --all show adopt --as --account \
+               run -- --no-scrub init --list-hosts --uninstall help --version; do
+    assert_output_contains "$token"
+  done
+}
+
+@test "every subcommand named in help is actually accepted" {
+  for cmd in set update rm list show adopt run init; do
+    run secret "$cmd"
+    refute_output_contains "unknown command"
   done
 }
 

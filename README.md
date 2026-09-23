@@ -170,7 +170,7 @@ against an agent that is actively trying to get around it.
 
 ```sh
 brew install bats-core shellcheck
-bats tests/          # 145 behavioral tests
+bats tests/          # 147 behavioral tests
 shellcheck bin/secret lib/*.sh hosts/*.sh hooks/*.sh
 ```
 
