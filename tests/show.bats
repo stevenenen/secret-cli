@@ -66,6 +66,48 @@ teardown() { teardown_isolated_env; }
   [ ! -f "$TEST_TMP/shown" ]
 }
 
+# --- the protected window ---------------------------------------------------
+
+@test "the protected dialog self-tests clean" {
+  [ -x "$SECRET_CLI_ROOT/libexec/secret-dialog" ] || skip "helper not built"
+  run "$SECRET_CLI_ROOT/libexec/secret-dialog" --self-test
+  assert_success
+  assert_output_contains "ok"
+}
+
+@test "show reports which display it will use, without showing anything" {
+  unset SECRET_CLI_SHOW_CMD
+  run secret show TOKEN --how
+  assert_success
+  refute_output_contains "s3cr3t-value-abcdef"
+  [ ! -f "$TEST_TMP/shown" ]
+}
+
+@test "show prefers the protected window when it is built" {
+  [ -x "$SECRET_CLI_ROOT/libexec/secret-dialog" ] || skip "helper not built"
+  unset SECRET_CLI_SHOW_CMD
+  run secret show TOKEN --how
+  assert_output_contains "secret-dialog"
+  assert_output_contains "accessibility"
+}
+
+@test "an explicit display command wins over the built helper" {
+  run secret show TOKEN --how
+  assert_output_contains "SECRET_CLI_SHOW_CMD"
+}
+
+@test "install builds the protected dialog" {
+  command -v swiftc >/dev/null 2>&1 || skip "no swiftc"
+  rm -f "$SECRET_CLI_ROOT/libexec/secret-dialog"
+  SECRET_CLI_BINDIR="$TEST_TMP/bin" "$SECRET_CLI_ROOT/install.sh" >/dev/null
+  [ -x "$SECRET_CLI_ROOT/libexec/secret-dialog" ]
+}
+
+@test "install succeeds without the protected dialog" {
+  run env SECRET_CLI_SKIP_DIALOG=1 SECRET_CLI_BINDIR="$TEST_TMP/bin2" "$SECRET_CLI_ROOT/install.sh"
+  assert_success
+}
+
 @test "show requires a key" {
   run secret show
   assert_failure

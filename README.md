@@ -59,7 +59,9 @@ and bolting them on here makes a guard noisy enough to get switched off.
 
 ## Install
 
-Requires macOS (the store is the login Keychain), bash, and python3.
+Requires macOS (the store is the login Keychain), bash, and python3. `swiftc`,
+from the Xcode Command Line Tools, is optional — without it `secret show` falls
+back to a dialog that can be screenshotted.
 
 ```sh
 git clone https://github.com/stevenenen/secret-cli.git
@@ -80,7 +82,7 @@ secret update <KEY>           replace an existing one
 secret rename <OLD> <NEW>     give it a different name
 secret rm <KEY>               forget it
 secret list [--all] [filter]  names only, never values
-secret show <KEY>             show the value in a dialog, never in the terminal
+secret show <KEY> [--how]     show the value in a window screenshots cannot see
 secret adopt <service>        use a keychain item another app created
 secret fingerprint <KEY>      a short digest, safe to paste anywhere
 secret verify <KEY>           is the value on stdin the one <KEY> holds?
@@ -141,9 +143,24 @@ machines genuinely have to agree — it warns when you do.
 
 ### Reading one yourself
 
-`secret show <KEY>` puts the value in a macOS dialog. It is on screen for you
+`secret show <KEY>` puts the value in a macOS window. It is on screen for you
 and never in the terminal, so it cannot reach scrollback, a pipe, or an agent's
 tool output. Nothing is copied to the clipboard.
+
+The window is built to resist the two ways something else on the Mac could read
+it anyway:
+
+- **`NSWindow.sharingType = .none`** — macOS excludes it from `screencapture`,
+  Screenshot.app, QuickTime recording and screen sharing. Enforced by the window
+  server, not by asking nicely.
+- **No accessibility element** — the text stays out of the accessibility tree.
+  This is the one that matters: an agent with accessibility access reads windows
+  without taking a screenshot at all, so blocking capture alone would be theater.
+
+That needs a real window, so `install.sh` compiles a small Swift helper with
+`swiftc`, which ships with the Xcode Command Line Tools. Without it, `show`
+falls back to a plain AppleScript dialog that works but can be screenshotted,
+and says so every time. `secret show <KEY> --how` tells you which you have.
 
 A key has to be a valid environment variable name — `GH_TOKEN`, not `gh-token` —
 because `run` sets one variable per key you name on that invocation.
@@ -190,12 +207,13 @@ against an agent that is actively trying to get around it.
   injection means: anything the command runs can read the value.
 - **A short value is not scrubbed at all.** Under six characters, redaction
   would mangle unrelated output. `set` warns when you store one.
+- **`show` cannot stop a camera pointed at the screen.** Nothing can.
 
 ## Development
 
 ```sh
 brew install bats-core shellcheck
-bats tests/          # 187 behavioral tests
+bats tests/          # 193 behavioral tests
 shellcheck bin/secret lib/*.sh hosts/*.sh hooks/*.sh
 ```
 
