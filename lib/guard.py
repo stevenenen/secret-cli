@@ -49,6 +49,7 @@ BLOCKED_PATHS = [
     ("path.secrets-dir", re.compile(r"(^|/)secrets(/|$)"), "a secrets directory"),
     ("path.credentials-json", re.compile(r"(^|/)credentials[^/]*\.json$", re.I), "a credentials file"),
     ("path.serviceaccount", re.compile(r"(^|/)serviceaccount[^/]*\.json$", re.I), "a service account key"),
+    ("path.cookie-jar", re.compile(r"(^|/)[^/]*cookie(s|jar|-jar)?(\.(txt|json|jar|sqlite|db|lwp))?$", re.I), "a cookie jar"),
 ]
 
 # Reading the keychain through the one CLI that can do it.
@@ -82,7 +83,11 @@ BLOCKED_IN_COMMAND = [
     ("path.private-key", re.compile(r"\.(pem|p12|pfx|jks|keystore)(?![A-Za-z0-9_])", re.I), "a key file"),
     ("path.key-suffix", re.compile(r"[\w./-]+\.key(?![A-Za-z0-9_])"), "a key file"),
     ("path.secrets-dir", re.compile(r"(^|[\s'\"/])secrets/"), "a secrets directory"),
+    ("path.cookie-jar", re.compile(r"cookie(s|jar|-jar)?\.(txt|json|jar|sqlite|db|lwp)(?![A-Za-z0-9_])", re.I), "a cookie jar"),
 ]
+
+# Printing the cookies of the agent's own browser: session tokens, every one.
+BROWSER_COOKIES = re.compile(r"(^|[\s;&|(`$])agent-browser\b[^;&|]*\scookies(\s+get\b|\s*($|[;&|]))")
 
 ADVICE = (
     "Reading {what} would put the credential into this transcript, where it is "
@@ -120,6 +125,8 @@ def command_verdict(command):
         return None
     if KEYCHAIN_READ.search(command):
         return "cmd.keychain-read", "the keychain itself"
+    if BROWSER_COOKIES.search(command):
+        return "cmd.browser-cookies", "the browser's cookies"
     if READER_RE.search(command):
         for rule, pattern, what in BLOCKED_IN_COMMAND:
             if pattern.search(command):

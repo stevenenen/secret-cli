@@ -28,3 +28,9 @@
 {"desc":"Read tool on a pkcs12 bundle","tool_name":"Read","tool_input":{"file_path":"cert.p12"}}
 {"desc":"Read tool on npmrc","tool_name":"Read","tool_input":{"file_path":"/Users/someone/.npmrc"}}
 {"desc":"Grep inside the ssh directory","tool_name":"Grep","tool_input":{"pattern":"PRIVATE","path":"/Users/someone/.ssh"}}
+{"desc":"printing the head of a cookie jar","tool_name":"Bash","tool_input":{"command":"head -3 ~/.purpleid/cookies.txt | cut -c1-40"}}
+{"desc":"summarizing a cookie jar with awk","tool_name":"Bash","tool_input":{"command":"awk -F'\\t' '{print $1}' ~/.purpleid/cookies.txt | sort | uniq -c"}}
+{"desc":"reading a cookie jar with the Read tool","tool_name":"Read","tool_input":{"file_path":"/Users/me/.purpleid/cookies.txt"}}
+{"desc":"reading the browser's cookie database","tool_name":"Read","tool_input":{"file_path":"/Users/me/Library/Application Support/Google/Chrome/Default/Cookies"}}
+{"desc":"listing the agent browser's cookies","tool_name":"Bash","tool_input":{"command":"agent-browser cookies"}}
+{"desc":"getting the agent browser's cookies as json","tool_name":"Bash","tool_input":{"command":"agent-browser --session x cookies get --json"}}

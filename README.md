@@ -49,7 +49,8 @@ Anthropic keys, JWTs, and PEM private key blocks.
 rather than reading the keychain directly. `secret init` installs a PreToolUse
 hook that denies the out-of-band routes: `security find-generic-password`,
 `dump-keychain`, and reads of `.env`, `~/.ssh` private keys, `~/.aws`, `~/.kube`,
-`.netrc`, `.npmrc`, `.git-credentials` and the keychain files themselves — over
+`.netrc`, `.npmrc`, `.git-credentials`, cookie jars and the keychain files
+themselves, plus listing the agent browser's cookies — over
 `Bash`, `Read`, `Grep` and `Glob` alike, since skipping the shell is otherwise
 the obvious way around it.
 

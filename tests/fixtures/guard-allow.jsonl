@@ -28,3 +28,6 @@
 {"desc":"Read tool on a keystore documentation page","tool_name":"Read","tool_input":{"file_path":"docs/keychain.md"}}
 {"desc":"Grep in the source tree","tool_name":"Grep","tool_input":{"pattern":"createClient","path":"src"}}
 {"desc":"writing ordinary source","tool_name":"Write","tool_input":{"file_path":"src/index.ts","content":"export const x = 1"}}
+{"desc":"source file named after cookies","tool_name":"Read","tool_input":{"file_path":"/repo/src/app/cookie-banner.component.ts"}}
+{"desc":"setting a cookie in the agent browser","tool_name":"Bash","tool_input":{"command":"agent-browser cookies set lang en --domain example.com"}}
+{"desc":"clearing the agent browser's cookies","tool_name":"Bash","tool_input":{"command":"agent-browser cookies clear"}}
