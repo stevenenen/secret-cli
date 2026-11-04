@@ -81,3 +81,8 @@
 {"desc":"nohup in front of a server","tool_name":"Bash","tool_input":{"command":"nohup npm start &"}}
 {"desc":"sudo in front of an install","tool_name":"Bash","tool_input":{"command":"sudo make install"}}
 {"desc":"sourcing a virtualenv","tool_name":"Bash","tool_input":{"command":"source .venv/bin/activate"}}
+{"desc":"command -pv looks a name up","tool_name":"Bash","tool_input":{"command":"command -pv env"}}
+{"desc":"a heredoc belongs to the command that opened it, not the next one","tool_name":"Bash","tool_input":{"command":"cat <<'EOF'; bash <<< 'ls'\nenv\nEOF"}}
+{"desc":"a harmless -c string after another option","tool_name":"Bash","tool_input":{"command":"bash -e -c 'ls'"}}
+{"desc":"a harmless -c string after an option that takes a value","tool_name":"Bash","tool_input":{"command":"bash -o pipefail -c 'make test'"}}
+{"desc":"a script file after --","tool_name":"Bash","tool_input":{"command":"bash -- scripts/build.sh"}}

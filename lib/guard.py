@@ -315,13 +315,16 @@ def scan(cmd):
         if q is None and cmd.startswith("<<", i) and not cmd.startswith("<<<", i):
             m = HEREDOC.match(cmd, i)
             if m:
-                heredocs.append((m.group(3), bool(m.group(1)), bool(m.group(2))))
+                owner = (len(pipelines) - 1, len(pipelines[-1]))  # where cur will land
+                heredocs.append((m.group(3), bool(m.group(1)), bool(m.group(2)), owner))
                 cur.append(m.group(0))
                 i = m.end()
                 continue
         if q is None and c == "\n" and heredocs:
+            end_pipeline()
             i += 1
-            for delim, dash, quoted in heredocs:
+            for delim, dash, quoted, (pi, ci) in heredocs:
+                markers = []
                 lines = []
                 while i < n:
                     end = cmd.find("\n", i)
@@ -336,11 +339,11 @@ def scan(cmd):
                 # expanded, and what it expands into reaches the command.
                 for inner in ([] if quoted else find_subs(body)):
                     subs.append(inner)
-                    cur.append(f" __SUB{len(subs) - 1}__")
+                    markers.append(f" __SUB{len(subs) - 1}__")
                 subs.append(body)
-                cur.append(f" __BODY{len(subs) - 1}__")
+                markers.append(f" __BODY{len(subs) - 1}__")
+                pipelines[pi][ci] += "".join(markers)
             heredocs.clear()
-            end_pipeline()
             continue
         if q is None:
             if cmd.startswith("&&", i) or cmd.startswith("||", i):
@@ -397,8 +400,9 @@ def stdin_scripts(text, subs):
         w = text.split()
     out = []
     for j, x in enumerate(w):
-        if x.startswith("<<<"):
-            out.append(x[3:] if len(x) > 3 else (w[j + 1] if j + 1 < len(w) else ""))
+        m = re.fullmatch(r"\d*<<<(.*)", x, re.S)
+        if m:
+            out.append(m.group(1) or (w[j + 1] if j + 1 < len(w) else ""))
     out += [subs[int(m.group(1))] for m in BODY.finditer(text) if int(m.group(1)) < len(subs)]
     return out
 
@@ -436,9 +440,10 @@ def command_index(w):
         if x in KEYWORDS or ASSIGN.fullmatch(w[i]):
             i += 1
         elif x == "command":
-            if any(a in ("-v", "-V") for a in w[i + 1:i + 3]):
+            j = _skip_opts(w, i + 1, set())
+            if any(set(a[1:]) & {"v", "V"} for a in w[i + 1:j] if a != "--"):
                 return len(w)  # a lookup; it runs nothing
-            i = _skip_opts(w, i + 1, set())
+            i = j
         elif x == "exec":
             i = _skip_opts(w, i + 1, {"-a"})
         elif x == "time":
@@ -758,13 +763,28 @@ def consumes_quietly(text):
                                            ["secret", "verify"]))
 
 
+SHELL_VALUED = {"-o", "-O", "+o", "+O", "--rcfile", "--init-file"}
+STDIN_PATHS = {"-", "/dev/stdin", "/dev/fd/0", "/proc/self/fd/0"}
+
+
 def shell_verdict(argv, piped, stdin):
     """A shell runs a -c string, a script file, or whatever arrives on stdin."""
-    args = argv[1:]
-    for i, a in enumerate(args):
-        if re.fullmatch(r"-[a-z]*c[a-z]*", a):
-            return env_verdict(args[i + 1]) if i + 1 < len(args) else None
-    reads_stdin = "-s" in args or not [a for a in args if not a.startswith("-")]
+    args, i, flags = argv[1:], 0, ""
+    while i < len(args) and args[i][:1] in "-+" and args[i] != "-":
+        a = args[i]
+        if a == "--":
+            i += 1
+            break
+        if a in SHELL_VALUED:
+            i += 2
+            continue
+        if not a.startswith("--"):
+            flags += a[1:]
+        i += 1
+    positional = args[i:]
+    if "c" in flags:
+        return env_verdict(positional[0]) if positional else None
+    reads_stdin = "s" in flags or not positional or positional[0] in STDIN_PATHS
     if not reads_stdin:
         return None  # a script file: out of this guard's sight, as any program is
     for script in stdin:

@@ -227,7 +227,9 @@ is a new file in `hosts/`. Without a guard, the first two layers still work.
 ## Known gaps
 
 This reduces accidental leakage. It is not a sandbox, and it is not a defense
-against an agent that is actively trying to get around it.
+against an agent that is actively trying to get around it. The guard is a
+denylist: it is meant to catch an agent's accidental leaks, not a determined
+attempt to evade it.
 
 - **The guard matches literal text.** A path or command name assembled at
   runtime slips past: `f=.en; cat ${f}v`, or `open('.e'+'nv')` inside a
