@@ -2,8 +2,7 @@
 {"desc":"git status","tool_name":"Bash","tool_input":{"command":"git status --short"}}
 {"desc":"installing dependencies","tool_name":"Bash","tool_input":{"command":"npm install"}}
 {"desc":"running the test suite","tool_name":"Bash","tool_input":{"command":"bats tests/"}}
-{"desc":"env is not blocked — secrets only exist inside a run child","tool_name":"Bash","tool_input":{"command":"env | grep JAVA_HOME"}}
-{"desc":"printenv is not blocked","tool_name":"Bash","tool_input":{"command":"printenv PATH"}}
+{"desc":"printenv of a non-secret variable","tool_name":"Bash","tool_input":{"command":"printenv PATH"}}
 {"desc":"echoing an ordinary variable","tool_name":"Bash","tool_input":{"command":"echo $HOME"}}
 {"desc":"listing secret names","tool_name":"Bash","tool_input":{"command":"secret list"}}
 {"desc":"the intended way to use a secret","tool_name":"Bash","tool_input":{"command":"secret run GH_TOKEN -- curl -H \"Authorization: Bearer $GH_TOKEN\" https://api.github.com/user"}}
@@ -31,3 +30,42 @@
 {"desc":"source file named after cookies","tool_name":"Read","tool_input":{"file_path":"/repo/src/app/cookie-banner.component.ts"}}
 {"desc":"setting a cookie in the agent browser","tool_name":"Bash","tool_input":{"command":"agent-browser cookies set lang en --domain example.com"}}
 {"desc":"clearing the agent browser's cookies","tool_name":"Bash","tool_input":{"command":"agent-browser cookies clear"}}
+{"desc":"the env list piped straight into an anchored sed for one non-secret variable","tool_name":"Bash","tool_input":{"command":"docker inspect aov2-orchestrator --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^AOV2_GIT_REVISION=//p'"}}
+{"desc":"the env list piped straight into an anchored grep for one non-secret variable","tool_name":"Bash","tool_input":{"command":"docker inspect aov2-orchestrator --format '{{range .Config.Env}}{{println .}}{{end}}' | grep '^AOV2_GIT_REVISION='"}}
+{"desc":"a container's status","tool_name":"Bash","tool_input":{"command":"docker inspect -f '{{.State.Status}}' web"}}
+{"desc":"a container's start time on its own","tool_name":"Bash","tool_input":{"command":"docker inspect -f '{{.State.StartedAt}}' web"}}
+{"desc":"a container's mounts","tool_name":"Bash","tool_input":{"command":"docker inspect --format '{{range .Mounts}}{{.Source}} {{.Destination}}{{println}}{{end}}' web"}}
+{"desc":"a container's image","tool_name":"Bash","tool_input":{"command":"docker inspect --format '{{.Config.Image}}' web"}}
+{"desc":"a container's labels","tool_name":"Bash","tool_input":{"command":"docker inspect --format '{{json .Config.Labels}}' web"}}
+{"desc":"a command inside a container","tool_name":"Bash","tool_input":{"command":"docker exec web ls /app"}}
+{"desc":"a non-secret variable inside a container","tool_name":"Bash","tool_input":{"command":"docker exec web printenv HOME"}}
+{"desc":"tests inside a compose service","tool_name":"Bash","tool_input":{"command":"docker compose exec api npm test"}}
+{"desc":"compose config as written","tool_name":"Bash","tool_input":{"command":"docker compose config --no-interpolate"}}
+{"desc":"compose service names","tool_name":"Bash","tool_input":{"command":"docker compose config --services"}}
+{"desc":"ps -ef","tool_name":"Bash","tool_input":{"command":"ps -ef"}}
+{"desc":"ps aux","tool_name":"Bash","tool_input":{"command":"ps aux"}}
+{"desc":"ps with a column list","tool_name":"Bash","tool_input":{"command":"ps -o pid,user,command -p 1"}}
+{"desc":"env as a command runner","tool_name":"Bash","tool_input":{"command":"env FOO=1 make"}}
+{"desc":"env -i as a command runner","tool_name":"Bash","tool_input":{"command":"env -i PATH=/usr/bin make test"}}
+{"desc":"printenv of two non-secret variables","tool_name":"Bash","tool_input":{"command":"printenv HOME AOV2_GIT_REVISION"}}
+{"desc":"env piped to an anchored grep for one non-secret variable","tool_name":"Bash","tool_input":{"command":"env | grep '^JAVA_HOME='"}}
+{"desc":"env piped to an anchored sed for one non-secret variable","tool_name":"Bash","tool_input":{"command":"env | sed -n 's/^AOV2_GIT_REVISION=//p'"}}
+{"desc":"asking whether a secret is set","tool_name":"Bash","tool_input":{"command":"echo \"${GH_TOKEN:+set}\""}}
+{"desc":"asking how long a secret is","tool_name":"Bash","tool_input":{"command":"echo ${#GH_TOKEN}"}}
+{"desc":"set with options","tool_name":"Bash","tool_input":{"command":"set -euo pipefail"}}
+{"desc":"export of an assignment","tool_name":"Bash","tool_input":{"command":"export FOO=bar"}}
+{"desc":"compgen -v lists names only","tool_name":"Bash","tool_input":{"command":"compgen -v | grep AOV2"}}
+{"desc":"a token captured into a command's environment","tool_name":"Bash","tool_input":{"command":"GH_TOKEN=$(gh auth token) docker compose up -d"}}
+{"desc":"a token captured into an export","tool_name":"Bash","tool_input":{"command":"export GH_TOKEN=$(gh auth token)"}}
+{"desc":"a token piped into docker login","tool_name":"Bash","tool_input":{"command":"gh auth token | docker login ghcr.io -u me --password-stdin"}}
+{"desc":"an ECR password piped into docker login","tool_name":"Bash","tool_input":{"command":"aws ecr get-login-password | docker login --username AWS --password-stdin 1.dkr.ecr.eu-west-1.amazonaws.com"}}
+{"desc":"a token in a header of a quiet curl","tool_name":"Bash","tool_input":{"command":"curl -sS -H \"Authorization: Bearer $(gh auth token)\" https://api.github.com/user"}}
+{"desc":"gh auth status without the token","tool_name":"Bash","tool_input":{"command":"gh auth status"}}
+{"desc":"listing kubernetes secrets by name","tool_name":"Bash","tool_input":{"command":"kubectl get secrets"}}
+{"desc":"a non-secret aws setting","tool_name":"Bash","tool_input":{"command":"aws configure get region"}}
+{"desc":"env through secret run, whose output is scrubbed","tool_name":"Bash","tool_input":{"command":"secret run GH_TOKEN -- printenv GH_TOKEN"}}
+{"desc":"grepping source for printenv","tool_name":"Bash","tool_input":{"command":"grep -rn printenv lib/"}}
+{"desc":"a commit message naming the commands","tool_name":"Bash","tool_input":{"command":"git commit -m 'block env dumps and gh auth token'"}}
+{"desc":"container names","tool_name":"Bash","tool_input":{"command":"docker ps --format '{{.Names}}'"}}
+{"desc":"a make target called env","tool_name":"Bash","tool_input":{"command":"make env"}}
+{"desc":"a heredoc commit message that names an environment dump","tool_name":"Bash","tool_input":{"command":"git commit -F - <<'EOF'\nDeny printenv GH_TOKEN and a bare\nenv\nEOF"}}

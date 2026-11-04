@@ -143,3 +143,90 @@ print(d.get("hookSpecificOutput",{}).get("permissionDecision","none"))' 2>/dev/n
   run cat "$SECRET_CLI_HOME/audit.jsonl"
   refute_output_contains "s3cr3t-value-abcdef"
 }
+
+@test "a rule with its own advice says what to do instead" {
+  feed '{"tool_name":"Bash","tool_input":{"command":"docker inspect web"}}'
+  assert_output_contains "anchored sed"
+  assert_output_contains "cmd.container-env"
+}
+
+# --- detection after the fact (PostToolUse) ---------------------------------
+
+# A PostToolUse payload for a Bash call whose stdout is $2.
+post_bash() {
+  python3 -c 'import json,sys
+print(json.dumps({"hook_event_name":"PostToolUse","tool_name":"Bash",
+  "tool_input":{"command":sys.argv[1]},
+  "tool_response":{"stdout":sys.argv[2],"stderr":"","interrupted":False,"isImage":False}}))' "$1" "$2"
+}
+
+field() {
+  printf '%s' "$1" | python3 -c 'import json,sys
+d=json.load(sys.stdin)
+for k in sys.argv[1].split("."): d=d.get(k,{}) if isinstance(d,dict) else {}
+print(json.dumps(d) if not isinstance(d,str) else d)' "$2"
+}
+
+@test "a credential in a tool's output is reported to the user" {
+  feed "$(post_bash 'docker logs web' 'key AKIAIOSFODNN7EXAMPLE here')"
+  assert_equal "$status" "0"
+  run field "$output" systemMessage
+  assert_output_contains "aws-access-key-id"
+  assert_output_contains "rotate"
+  assert_output_contains "docker logs web"
+}
+
+@test "the report never repeats the credential" {
+  feed "$(post_bash 'docker logs web' 'key AKIAIOSFODNN7EXAMPLE here')"
+  refute_output_contains "AKIAIOSFODNN7EXAMPLE"
+}
+
+@test "the agent sees the output with the credential redacted, in the same shape" {
+  feed "$(post_bash 'docker logs web' 'key AKIAIOSFODNN7EXAMPLE here')"
+  run field "$output" hookSpecificOutput.updatedToolOutput
+  assert_output_contains "redacted:aws-access-key-id"
+  assert_output_contains '"stderr"'
+  assert_output_contains '"interrupted"'
+}
+
+@test "the agent is told what happened" {
+  feed "$(post_bash 'docker logs web' 'key AKIAIOSFODNN7EXAMPLE here')"
+  run field "$output" hookSpecificOutput.additionalContext
+  assert_output_contains "rotated"
+}
+
+@test "a credential in a file the agent read is caught too" {
+  feed '{"hook_event_name":"PostToolUse","tool_name":"Read","tool_input":{"file_path":"/repo/notes.md"},"tool_response":{"type":"text","file":{"filePath":"/repo/notes.md","content":"sk-ant-api03-0123456789abcdefghijklmnopqrstuvwxyz"}}}'
+  assert_output_contains "anthropic-api-key"
+  assert_output_contains "/repo/notes.md"
+  refute_output_contains "0123456789abcdefghijklmnopqrstuvwxyz"
+}
+
+@test "a credential in the command itself is not repeated in the report" {
+  feed "$(post_bash 'echo AKIAIOSFODNN7EXAMPLE' 'AKIAIOSFODNN7EXAMPLE')"
+  refute_output_contains "AKIAIOSFODNN7EXAMPLE"
+}
+
+@test "clean output produces nothing" {
+  feed "$(post_bash 'ls' 'README.md')"
+  assert_equal "$output" ""
+  [ ! -s "$SECRET_CLI_HOME/audit.jsonl" ]
+}
+
+@test "a leak is recorded in the audit log by shape, without the value" {
+  feed "$(post_bash 'docker logs web' 'key AKIAIOSFODNN7EXAMPLE here')"
+  run cat "$SECRET_CLI_HOME/audit.jsonl"
+  assert_output_contains "leak.aws-access-key-id"
+  refute_output_contains "AKIAIOSFODNN7EXAMPLE"
+}
+
+@test "warn mode reports a leak but leaves the output as it was" {
+  SECRET_CLI_GUARD_MODE=warn feed "$(post_bash 'docker logs web' 'key AKIAIOSFODNN7EXAMPLE here')"
+  assert_output_contains "systemMessage"
+  refute_output_contains "updatedToolOutput"
+}
+
+@test "off mode does not look at output" {
+  SECRET_CLI_GUARD_MODE=off feed "$(post_bash 'docker logs web' 'key AKIAIOSFODNN7EXAMPLE here')"
+  assert_equal "$output" ""
+}

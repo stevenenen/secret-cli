@@ -193,3 +193,75 @@ print(m)'
   assert_success
   assert_equal "$(hook_count)" "0"
 }
+
+# --- the output check (PostToolUse) -----------------------------------------
+
+post_hook_count() {
+  python3 -c '
+import json,sys
+d=json.load(open(sys.argv[1]))
+n=0
+for entry in d.get("hooks",{}).get("PostToolUse",[]):
+    for h in entry.get("hooks",[]):
+        if "secret-guard" in h.get("command",""): n+=1
+print(n)' "$SETTINGS"
+}
+
+# Settings as an earlier version of init left them: the PreToolUse hook only.
+pre_only_settings() {
+  cat > "$SETTINGS" <<JSON
+{ "hooks": { "PreToolUse": [ { "matcher": "Bash", "hooks": [ { "type": "command", "command": "$SECRET_CLI_ROOT/hooks/secret-guard.sh" } ] } ] } }
+JSON
+}
+
+@test "a dry run lists the output check" {
+  run secret init claude-code --dry-run
+  assert_success
+  assert_output_contains "PostToolUse"
+  assert_output_contains "WebFetch"
+}
+
+@test "init installs the output check alongside the guard" {
+  existing_settings
+  secret init claude-code --yes
+  assert_equal "$(post_hook_count)" "1"
+}
+
+@test "the output check covers the tools whose output reaches the agent" {
+  secret init claude-code --yes
+  run python3 -c '
+import json
+d=json.load(open("'"$SETTINGS"'"))
+print([e["matcher"] for e in d["hooks"]["PostToolUse"] if any("secret-guard" in h["command"] for h in e["hooks"])][0])'
+  assert_output_contains "Bash"
+  assert_output_contains "Read"
+  assert_output_contains "WebFetch"
+}
+
+@test "init twice leaves exactly one output check" {
+  existing_settings
+  secret init claude-code --yes
+  secret init claude-code --yes
+  assert_equal "$(post_hook_count)" "1"
+}
+
+@test "a dry run over an older install says the output check is missing" {
+  pre_only_settings
+  run secret init claude-code --dry-run
+  assert_success
+  assert_output_contains "partly installed"
+}
+
+@test "init over an older install adds the output check and keeps one guard" {
+  pre_only_settings
+  secret init claude-code --yes
+  assert_equal "$(hook_count)" "1"
+  assert_equal "$(post_hook_count)" "1"
+}
+
+@test "uninstall removes the output check too" {
+  existing_settings
+  secret init claude-code --yes
+  secret init claude-code --uninstall --yes
+  assert_equal "$(post_hook_count)" "0"
+}

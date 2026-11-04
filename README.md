@@ -27,7 +27,8 @@ building for that. That is what this does.
 
 ## How
 
-Three layers, in order of how much they matter.
+Four layers. The first three are in order of how much they matter; the fourth
+catches what gets past them.
 
 **1. The value is never an argument.** `set` reads it from a hidden prompt, or
 from stdin when scripted. `run` puts it in the child's environment. It is never
@@ -53,6 +54,31 @@ hook that denies the out-of-band routes: `security find-generic-password`,
 themselves, plus listing the agent browser's cookies — over
 `Bash`, `Read`, `Grep` and `Glob` alike, since skipping the shell is otherwise
 the obvious way around it.
+
+It also denies printing an environment, because the agent's own shell holds
+live tokens and so does every container it can reach:
+
+- `env`, `printenv`, `set`, `export -p` and `declare -x` with nothing to narrow
+  them, and `printenv`, `echo` or `printf` of a variable whose name looks secret
+  (`TOKEN`, `SECRET`, `PASSWORD`, `API_KEY`, `AUTH`, `SESSION` and the like);
+- `docker inspect` that can include `Config.Env`, `docker exec` or
+  `kubectl exec` running an environment dump, `docker compose config` (it fills
+  in the dotenv file) unless `--no-interpolate`, `/proc/*/environ`, and `ps`
+  with `e` or `-E`;
+- commands that print a token outright — `gh auth token`, `gcloud auth
+  print-access-token`, `kubectl get secret -o yaml` and their kin — unless the
+  output is captured, as in `GH_TOKEN=$(gh auth token) docker compose up -d`,
+  or piped into a reader such as `docker login --password-stdin`.
+
+One named, non-secret variable stays readable: `printenv HOME`, or a dump piped
+straight into an anchored extraction such as `sed -n 's/^NAME=//p'`. Anything
+run through `secret run` is left alone.
+
+**4. A leak check.** The same hook also runs after `Bash`, `Read`, `Grep` and
+`WebFetch`, and scans what they returned for the credential shapes layer 2
+knows. On a hit it replaces the value with a redaction marker before the agent
+reads it, writes the shape to the audit log, and tells you which call it was,
+so you can rotate the credential. It never repeats the value.
 
 What the guard deliberately does **not** do: block destructive commands, detect
 personal data, or look for prompt injection. Those belong to a different tool,
@@ -208,13 +234,25 @@ against an agent that is actively trying to get around it.
   injection means: anything the command runs can read the value.
 - **A short value is not scrubbed at all.** Under six characters, redaction
   would mangle unrelated output. `set` warns when you store one.
+- **`secret run` is exempt from the environment rules.** Its child inherits the
+  agent's whole environment, so `secret run KEY -- env` prints every variable;
+  only the named keys and the known shapes are scrubbed.
+- **A variable is judged by its name.** `echo "$DB_PASS"` goes through, and so
+  does a token captured under an innocent name and printed later:
+  `x=$(gh auth token); echo "$x"`. The leak check catches the second if the
+  token has a known shape.
+- **Pod specs are not treated as secrets.** `kubectl get pod -o yaml` shows an
+  environment value written inline into the spec.
+- **The leak check knows shapes, not values.** An opaque token with no
+  recognizable prefix passes it. Once it fires, the raw output has already left
+  the tool: the redaction protects the conversation, not the credential.
 - **`show` cannot stop a camera pointed at the screen.** Nothing can.
 
 ## Development
 
 ```sh
 brew install bats-core shellcheck
-bats tests/          # 193 behavioral tests
+bats tests/
 shellcheck bin/secret lib/*.sh hosts/*.sh hooks/*.sh
 ```
 

@@ -34,3 +34,64 @@
 {"desc":"reading the browser's cookie database","tool_name":"Read","tool_input":{"file_path":"/Users/me/Library/Application Support/Google/Chrome/Default/Cookies"}}
 {"desc":"listing the agent browser's cookies","tool_name":"Bash","tool_input":{"command":"agent-browser cookies"}}
 {"desc":"getting the agent browser's cookies as json","tool_name":"Bash","tool_input":{"command":"agent-browser --session x cookies get --json"}}
+{"desc":"the 3 November incident: a start time and the env list on one line, kept by a loose grep","tool_name":"Bash","tool_input":{"command":"docker inspect aov2-orchestrator --format '{{.State.StartedAt}} {{range .Config.Env}}{{println .}}{{end}}' | grep -E \"StartedAt|^20|AOV2_GIT_REVISION\""}}
+{"desc":"docker inspect with no format prints Config.Env in its JSON","tool_name":"Bash","tool_input":{"command":"docker inspect aov2-orchestrator"}}
+{"desc":"docker container inspect piped to jq still prints the whole JSON first","tool_name":"Bash","tool_input":{"command":"docker container inspect web | jq '.[0].State'"}}
+{"desc":"podman inspect with no format","tool_name":"Bash","tool_input":{"command":"podman inspect web"}}
+{"desc":"a format that prints the whole Config","tool_name":"Bash","tool_input":{"command":"docker inspect -f '{{json .Config}}' web"}}
+{"desc":"a format that prints the whole object","tool_name":"Bash","tool_input":{"command":"docker inspect --format='{{json .}}' web"}}
+{"desc":"a format that prints the env list","tool_name":"Bash","tool_input":{"command":"docker inspect --format '{{.Config.Env}}' web"}}
+{"desc":"the env list with nothing to filter it","tool_name":"Bash","tool_input":{"command":"docker inspect web --format '{{range .Config.Env}}{{println .}}{{end}}'"}}
+{"desc":"the env list filtered by an unanchored grep","tool_name":"Bash","tool_input":{"command":"docker inspect web --format '{{range .Config.Env}}{{println .}}{{end}}' | grep AOV2"}}
+{"desc":"the env list filtered to a secret-looking variable","tool_name":"Bash","tool_input":{"command":"docker inspect web --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^GH_TOKEN=//p'"}}
+{"desc":"env inside a container","tool_name":"Bash","tool_input":{"command":"docker exec web env"}}
+{"desc":"printenv inside a container","tool_name":"Bash","tool_input":{"command":"docker exec -it web printenv"}}
+{"desc":"env inside a compose service","tool_name":"Bash","tool_input":{"command":"docker compose exec api env"}}
+{"desc":"env through a shell inside a compose service","tool_name":"Bash","tool_input":{"command":"docker compose -f x.yml exec -T api sh -c 'env | sort'"}}
+{"desc":"env inside a pod","tool_name":"Bash","tool_input":{"command":"kubectl exec -n ns pod-0 -- env"}}
+{"desc":"a secret-looking variable inside a podman container","tool_name":"Bash","tool_input":{"command":"podman exec web printenv GH_TOKEN"}}
+{"desc":"reading a container's process environment","tool_name":"Bash","tool_input":{"command":"docker exec web cat /proc/1/environ"}}
+{"desc":"compose config interpolates secrets from the dotenv file","tool_name":"Bash","tool_input":{"command":"docker compose config"}}
+{"desc":"the standalone compose binary does the same","tool_name":"Bash","tool_input":{"command":"docker-compose config"}}
+{"desc":"compose config as JSON","tool_name":"Bash","tool_input":{"command":"docker compose -f a.yml config --format json"}}
+{"desc":"compose config listing its environment","tool_name":"Bash","tool_input":{"command":"docker compose config --no-interpolate --environment"}}
+{"desc":"reading this process's environment","tool_name":"Bash","tool_input":{"command":"cat /proc/self/environ"}}
+{"desc":"reading a process environment through a redirect","tool_name":"Bash","tool_input":{"command":"tr '\\0' '\\n' < /proc/1/environ"}}
+{"desc":"reading every process environment","tool_name":"Bash","tool_input":{"command":"strings /proc/*/environ"}}
+{"desc":"ps with BSD-style e shows environments","tool_name":"Bash","tool_input":{"command":"ps eww"}}
+{"desc":"ps aux with e appended","tool_name":"Bash","tool_input":{"command":"ps auxe"}}
+{"desc":"ps -E shows environments on macOS","tool_name":"Bash","tool_input":{"command":"ps -wwE -p 1"}}
+{"desc":"bare env","tool_name":"Bash","tool_input":{"command":"env"}}
+{"desc":"bare printenv","tool_name":"Bash","tool_input":{"command":"printenv"}}
+{"desc":"env piped to a loose grep","tool_name":"Bash","tool_input":{"command":"env | grep JAVA_HOME"}}
+{"desc":"env filtered for tokens","tool_name":"Bash","tool_input":{"command":"env | grep -i token"}}
+{"desc":"env with an unset is still a dump","tool_name":"Bash","tool_input":{"command":"env -u FOO"}}
+{"desc":"env inside a subshell","tool_name":"Bash","tool_input":{"command":"(env)"}}
+{"desc":"env after a cd","tool_name":"Bash","tool_input":{"command":"cd /tmp && env"}}
+{"desc":"env through bash -c","tool_name":"Bash","tool_input":{"command":"bash -c 'env'"}}
+{"desc":"set with no arguments","tool_name":"Bash","tool_input":{"command":"set"}}
+{"desc":"export -p","tool_name":"Bash","tool_input":{"command":"export -p"}}
+{"desc":"declare -x","tool_name":"Bash","tool_input":{"command":"declare -x"}}
+{"desc":"declare -p of a secret-looking variable","tool_name":"Bash","tool_input":{"command":"declare -p GH_TOKEN"}}
+{"desc":"compgen -v piped into printing values","tool_name":"Bash","tool_input":{"command":"compgen -v | while read v; do echo \"$v=${!v}\"; done"}}
+{"desc":"compgen -v piped into printenv","tool_name":"Bash","tool_input":{"command":"compgen -v | xargs printenv"}}
+{"desc":"printenv of a secret-looking variable","tool_name":"Bash","tool_input":{"command":"printenv CLAUDE_CODE_MESSAGING_TOKEN"}}
+{"desc":"echo of a secret-looking variable","tool_name":"Bash","tool_input":{"command":"echo \"$ORCA_AGENT_HOOK_TOKEN\""}}
+{"desc":"printf of a secret-looking variable","tool_name":"Bash","tool_input":{"command":"printf '%s\\n' \"${API_KEY}\""}}
+{"desc":"echo of the first characters of a token","tool_name":"Bash","tool_input":{"command":"echo ${GH_TOKEN:0:6}"}}
+{"desc":"an anchored grep for a secret-looking variable","tool_name":"Bash","tool_input":{"command":"env | grep '^GH_TOKEN='"}}
+{"desc":"gh auth token prints the token","tool_name":"Bash","tool_input":{"command":"gh auth token"}}
+{"desc":"gh auth status with the token shown","tool_name":"Bash","tool_input":{"command":"gh auth status --show-token"}}
+{"desc":"git credential fill prints the password","tool_name":"Bash","tool_input":{"command":"echo url=https://github.com | git credential fill"}}
+{"desc":"gcloud prints an access token","tool_name":"Bash","tool_input":{"command":"gcloud auth print-access-token"}}
+{"desc":"az prints an access token","tool_name":"Bash","tool_input":{"command":"az account get-access-token"}}
+{"desc":"aws prints the secret access key","tool_name":"Bash","tool_input":{"command":"aws --profile prod configure get aws_secret_access_key"}}
+{"desc":"kubectl prints a secret's data","tool_name":"Bash","tool_input":{"command":"kubectl get secret db -o yaml"}}
+{"desc":"kubectl prints one field of a secret","tool_name":"Bash","tool_input":{"command":"kubectl get secrets -n x -o jsonpath='{.data.password}'"}}
+{"desc":"doppler prints a secret","tool_name":"Bash","tool_input":{"command":"doppler secrets get API_KEY"}}
+{"desc":"1Password read prints a secret","tool_name":"Bash","tool_input":{"command":"op read op://vault/item/password"}}
+{"desc":"1Password item revealed","tool_name":"Bash","tool_input":{"command":"op item get github --fields token --reveal"}}
+{"desc":"a token captured only to be echoed","tool_name":"Bash","tool_input":{"command":"echo $(gh auth token)"}}
+{"desc":"a token in a header of a verbose curl","tool_name":"Bash","tool_input":{"command":"curl -v -H \"Authorization: Bearer $(gh auth token)\" https://api.github.com"}}
+{"desc":"a token piped into something that prints it","tool_name":"Bash","tool_input":{"command":"gh auth token | cat"}}
+{"desc":"Read tool on a process environment","tool_name":"Read","tool_input":{"file_path":"/proc/1/environ"}}
