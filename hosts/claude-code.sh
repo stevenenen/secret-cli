@@ -9,7 +9,7 @@ CC_SETTINGS="$CC_DIR/settings.json"
 CC_HOOK="$SECRET_CLI_ROOT/hooks/secret-guard.sh"
 CC_MATCHER="Bash|Read|Edit|Write|NotebookEdit|Grep|Glob"
 # The tools whose output can carry a credential back to the agent.
-CC_POST_MATCHER="Bash|Read|Grep|WebFetch"
+CC_POST_MATCHER="Bash|Read|Grep|WebFetch|mcp__.*"
 
 _cc_validate() {
   [ -f "$CC_SETTINGS" ] || return 0

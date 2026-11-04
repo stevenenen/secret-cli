@@ -6,3 +6,5 @@
 {"desc":"a token captured under an innocent name and printed later","tool_name":"Bash","tool_input":{"command":"x=$(gh auth token); echo \"$x\""},"why":"the variable name does not look secret, and the guard does not follow values between commands"}
 {"desc":"a secret variable whose name does not look secret","tool_name":"Bash","tool_input":{"command":"echo \"$DB_PASS\""},"why":"printing one variable is judged by its name alone"}
 {"desc":"a pod spec with an inline environment value","tool_name":"Bash","tool_input":{"command":"kubectl get pod api-0 -o yaml"},"why":"pod specs usually reference secrets rather than hold them, so the guard lets them through"}
+{"desc":"a script file run by a shell","tool_name":"Bash","tool_input":{"command":"bash ./print-env.sh"},"why":"the guard sees the file's name, not what it holds"}
+{"desc":"a secret variable expanded in an unquoted heredoc body","tool_name":"Bash","tool_input":{"command":"cat <<EOF\n$GH_TOKEN\nEOF"},"why":"heredoc bodies are checked for substitutions, not for variables"}

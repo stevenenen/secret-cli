@@ -74,11 +74,20 @@ One named, non-secret variable stays readable: `printenv HOME`, or a dump piped
 straight into an anchored extraction such as `sed -n 's/^NAME=//p'`. Anything
 run through `secret run` is left alone.
 
-**4. A leak check.** The same hook also runs after `Bash`, `Read`, `Grep` and
-`WebFetch`, and scans what they returned for the credential shapes layer 2
-knows. On a hit it replaces the value with a redaction marker before the agent
-reads it, writes the shape to the audit log, and tells you which call it was,
-so you can rotate the credential. It never repeats the value.
+The guard reads a command the way the shell would: through `sudo`, `env`,
+`command`, `exec`, `nice` and `time`, by full path, inside `$( )`, backticks,
+arithmetic, unquoted heredocs, `eval` and `bash -c`. It denies a script piped
+into a shell, since it cannot see what that runs, and denies a command nested
+too deeply to check rather than letting it through.
+
+**4. A leak check.** The same hook also runs after `Bash`, `Read`, `Grep`,
+`WebFetch` and MCP tools, and scans what they returned for the credential
+shapes layer 2 knows. On a hit it hands the agent a copy with the value
+replaced by a redaction marker, writes the shape to the audit log, and tells
+you which call it was so you can rotate the credential now. It never repeats
+the value. The replacement uses Claude Code's `updatedToolOutput`
+(`updatedMCPToolOutput` for MCP tools); checked on Claude Code 2.1.318, where
+neither the agent nor the session log received the raw value.
 
 What the guard deliberately does **not** do: block destructive commands, detect
 personal data, or look for prompt injection. Those belong to a different tool,
@@ -245,7 +254,13 @@ against an agent that is actively trying to get around it.
   environment value written inline into the spec.
 - **The leak check knows shapes, not values.** An opaque token with no
   recognizable prefix passes it. Once it fires, the raw output has already left
-  the tool: the redaction protects the conversation, not the credential.
+  the tool and reached Claude Code's telemetry: the redaction protects the
+  conversation, not the credential. A Claude Code version without
+  `updatedToolOutput` hands the agent the raw output and only the warning.
+- **A script file is not read.** `bash ./script.sh` or `source ./script.sh` runs
+  whatever the file holds; the guard sees only its name.
+- **A variable expanded in a heredoc body is not checked.** `cat <<EOF` with
+  `$GH_TOKEN` on a line prints it; substitutions in the body are checked.
 - **`show` cannot stop a camera pointed at the screen.** Nothing can.
 
 ## Development

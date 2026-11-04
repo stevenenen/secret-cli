@@ -265,3 +265,12 @@ print([e["matcher"] for e in d["hooks"]["PostToolUse"] if any("secret-guard" in 
   secret init claude-code --uninstall --yes
   assert_equal "$(post_hook_count)" "0"
 }
+
+@test "the output check covers MCP tools" {
+  secret init claude-code --yes
+  run python3 -c '
+import json
+d=json.load(open("'"$SETTINGS"'"))
+print([e["matcher"] for e in d["hooks"]["PostToolUse"] if any("secret-guard" in h["command"] for h in e["hooks"])][0])'
+  assert_output_contains "mcp__"
+}

@@ -230,3 +230,22 @@ print(json.dumps(d) if not isinstance(d,str) else d)' "$2"
   SECRET_CLI_GUARD_MODE=off feed "$(post_bash 'docker logs web' 'key AKIAIOSFODNN7EXAMPLE here')"
   assert_equal "$output" ""
 }
+
+@test "a command nested too deeply is denied, not waved through" {
+  feed "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo $(printf '$(echo %.0s' $(seq 12))ok$(printf ')%.0s' $(seq 12))\"}}"
+  assert_equal "$(decision "$output")" "deny"
+  assert_output_contains "nested too deeply"
+}
+
+@test "the leak report tells the user to rotate now" {
+  feed "$(post_bash 'docker logs web' 'key AKIAIOSFODNN7EXAMPLE here')"
+  run field "$output" systemMessage
+  assert_output_contains "rotate it now"
+}
+
+@test "an MCP tool's output is redacted through the MCP field" {
+  feed '{"hook_event_name":"PostToolUse","tool_name":"mcp__notes__read","tool_input":{},"tool_response":[{"type":"text","text":"key AKIAIOSFODNN7EXAMPLE"}]}'
+  run field "$output" hookSpecificOutput.updatedMCPToolOutput
+  assert_output_contains "redacted:aws-access-key-id"
+  refute_output_contains "AKIAIOSFODNN7EXAMPLE"
+}

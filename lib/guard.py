@@ -145,6 +145,16 @@ RULE_ADVICE = {
         "'s/^NAME=//p'), test whether a secret is set with ${NAME:+set}, and "
         "use 'secret run <KEY> -- <command>' to hand one to a process."
     ),
+    "cmd.too-deep": (
+        "This is a command nested too deeply to check: substitutions or shells "
+        "inside one another past the guard's limit. It is denied rather than "
+        "waved through. Split it into separate steps."
+    ),
+    "cmd.shell-stdin": (
+        "This feeds a script to a shell on stdin, so the guard cannot see what "
+        "runs. Save the script to a file and read it first, or run the commands "
+        "directly."
+    ),
     "cmd.token-print": (
         "This command prints a credential outright, into this transcript. "
         "Capture it where it is used instead: GH_TOKEN=$(gh auth token) "
@@ -160,11 +170,14 @@ SECRET_NAME = re.compile(
 )
 PROC_ENVIRON = re.compile(r"/proc/[^/\s'\"]+/environ")
 SUB = re.compile(r"__SUB(\d+)__")
+BODY = re.compile(r"__BODY(\d+)__")
 HEREDOC = re.compile(r"<<(-?)\s*(['\"]?)([^\s'\";&|<>()]+)\2")
 REDIRECT = re.compile(r"\d*(>>?|<<?<?|&>>?|>&|<&)(\S*)")
 SHELLS = ("sh", "bash", "zsh", "dash", "ksh")
 KEYWORDS = {"do", "then", "else", "elif", "if", "while", "until", "!", "{", "(",
-            "time", "exec", "command", "builtin", "nohup", "noglob"}
+            "builtin", "nohup", "noglob"}
+MAX_DEPTH = 8
+TOO_DEEP = ("cmd.too-deep", "a command nested too deeply to check")
 # Commands that print what they are given: a token handed to one as an
 # argument ends up in the transcript after all.
 PRINTERS = {"echo", "printf", "print", "cat", "tee", "jq", "yq", "xargs", "eval",
@@ -202,12 +215,51 @@ def _close_paren(cmd, i):
     return n
 
 
+def _arith_close(cmd, i):
+    """For '$((' at cmd[i], the index past its '))', or None when the parens
+    close some other way and it is a command substitution of a subshell."""
+    j = _close_paren(cmd, i + 1)
+    k = _close_paren(cmd, i + 2)
+    return j if k == j - 1 and cmd[j - 2:j] == "))" else None
+
+
+def find_subs(text):
+    """The command substitutions inside text that is not itself a command
+    line: an arithmetic expression, an unquoted heredoc body."""
+    out, i, n = [], 0, len(text)
+    while i < n:
+        c = text[i]
+        if c == "\\":
+            i += 2
+            continue
+        if text.startswith("$((", i):
+            j = _arith_close(text, i)
+            if j:
+                out += find_subs(text[i + 3:j - 2])
+                i = j
+                continue
+        if text.startswith("$(", i):
+            j = _close_paren(text, i + 1)
+            out.append(text[i + 2:j - 1])
+            i = j
+            continue
+        if c == "`":
+            j = text.find("`", i + 1)
+            j = n if j < 0 else j
+            out.append(text[i + 1:j])
+            i = j + 1
+            continue
+        i += 1
+    return out
+
+
 def scan(cmd):
     """Split a command line into pipelines of simple commands.
 
     Command and process substitutions are cut out and replaced by __SUBn__,
     so a simple command's text shows where each one lands; subs[n] is the
-    inner text."""
+    inner text. A heredoc body becomes __BODYn__ on the command it feeds, with
+    subs[n] the body."""
     pipelines, cur, subs, heredocs = [[]], [], [], []
     q, i, n = None, 0, len(cmd)
 
@@ -240,9 +292,11 @@ def scan(cmd):
             cur.append(c)
             i += 1
             continue
-        if cmd.startswith("$((", i):
-            j = _close_paren(cmd, i + 1)
-            cur.append(cmd[i:j])
+        if cmd.startswith("$((", i) and _arith_close(cmd, i):
+            j = _arith_close(cmd, i)
+            for inner in find_subs(cmd[i + 3:j - 2]):
+                subs.append(inner)
+                cur.append(f" __SUB{len(subs) - 1}__ ")
             i = j
             continue
         if (c == "$" or (c in "<>" and q is None)) and cmd.startswith("(", i + 1):
@@ -261,14 +315,14 @@ def scan(cmd):
         if q is None and cmd.startswith("<<", i) and not cmd.startswith("<<<", i):
             m = HEREDOC.match(cmd, i)
             if m:
-                heredocs.append((m.group(3), bool(m.group(1))))
+                heredocs.append((m.group(3), bool(m.group(1)), bool(m.group(2))))
                 cur.append(m.group(0))
                 i = m.end()
                 continue
         if q is None and c == "\n" and heredocs:
-            end_pipeline()
             i += 1
-            for delim, dash in heredocs:  # a heredoc's body is data, not commands
+            for delim, dash, quoted in heredocs:
+                lines = []
                 while i < n:
                     end = cmd.find("\n", i)
                     end = n if end < 0 else end
@@ -276,7 +330,17 @@ def scan(cmd):
                     i = end + 1
                     if (line.lstrip("\t") if dash else line) == delim:
                         break
+                    lines.append(line)
+                body = "\n".join(lines)
+                # The body is data, not commands; but an unquoted one is
+                # expanded, and what it expands into reaches the command.
+                for inner in ([] if quoted else find_subs(body)):
+                    subs.append(inner)
+                    cur.append(f" __SUB{len(subs) - 1}__")
+                subs.append(body)
+                cur.append(f" __BODY{len(subs) - 1}__")
             heredocs.clear()
+            end_pipeline()
             continue
         if q is None:
             if cmd.startswith("&&", i) or cmd.startswith("||", i):
@@ -310,8 +374,8 @@ def words(text):
             skip = False
             continue
         m = REDIRECT.fullmatch(x)
-        if m:
-            skip = not m.group(2)
+        if m or BODY.fullmatch(x):
+            skip = bool(m) and not m.group(2)
             continue
         out.append(x)
     while len(out) == 1 and out[0][:1] == "(" and out[0][-1:] == ")":
@@ -324,6 +388,21 @@ def words(text):
     return [x for x in out if x]
 
 
+def stdin_scripts(text, subs):
+    """What a simple command reads on stdin, when the command line holds it:
+    here-strings and heredoc bodies."""
+    try:
+        w = shlex.split(text)
+    except ValueError:
+        w = text.split()
+    out = []
+    for j, x in enumerate(w):
+        if x.startswith("<<<"):
+            out.append(x[3:] if len(x) > 3 else (w[j + 1] if j + 1 < len(w) else ""))
+    out += [subs[int(m.group(1))] for m in BODY.finditer(text) if int(m.group(1)) < len(subs)]
+    return out
+
+
 def _skip_opts(w, i, valued):
     while i < len(w) and w[i].startswith("-") and w[i] != "--":
         i += 2 if w[i] in valued else 1
@@ -332,13 +411,43 @@ def _skip_opts(w, i, valued):
     return i
 
 
+def base(word):
+    """A command word as the guard compares it: /usr/bin/env and \\env are env."""
+    return os.path.basename(word.lstrip("\\")) or word
+
+
+def _env_command(w, i):
+    """Past env's options and assignments: where the command it runs starts."""
+    while i < len(w):
+        if w[i] in ("-u", "--unset", "-C", "--chdir"):
+            i += 2
+        elif w[i].startswith("-") or ASSIGN.fullmatch(w[i]):
+            i += 1
+        else:
+            break
+    return i
+
+
 def command_index(w):
     """Where the command word sits, past assignments, keywords and wrappers."""
     i = 0
     while i < len(w):
-        x = w[i]
-        if x in KEYWORDS or ASSIGN.fullmatch(x):
+        x = base(w[i])
+        if x in KEYWORDS or ASSIGN.fullmatch(w[i]):
             i += 1
+        elif x == "command":
+            if any(a in ("-v", "-V") for a in w[i + 1:i + 3]):
+                return len(w)  # a lookup; it runs nothing
+            i = _skip_opts(w, i + 1, set())
+        elif x == "exec":
+            i = _skip_opts(w, i + 1, {"-a"})
+        elif x == "time":
+            i = _skip_opts(w, i + 1, set())
+        elif x == "env":
+            j = _env_command(w, i + 1)
+            if j >= len(w):
+                break  # a bare env: the command is env itself
+            i = j
         elif x == "sudo":
             i = _skip_opts(w, i + 1, {"-u", "-g", "-C", "-p", "-U", "-r", "-t", "-h"})
         elif x in ("nice", "stdbuf"):
@@ -352,9 +461,13 @@ def command_index(w):
     return i
 
 
+def normalized(argv):
+    argv = argv[command_index(argv):]
+    return [base(argv[0])] + argv[1:] if argv else argv
+
+
 def argv_of(text):
-    w = words(text)
-    return w[command_index(w):]
+    return normalized(words(text))
 
 
 def is_secret_run(argv):
@@ -415,18 +528,7 @@ def shell_env_dump(argv, rest):
     cmd, args = argv[0], argv[1:]
     dump = False
     if cmd == "env":
-        i = 0
-        while i < len(args):
-            a = args[i]
-            if a in ("-u", "--unset", "-C", "--chdir"):
-                i += 2
-            elif a.startswith("-") or ASSIGN.fullmatch(a):
-                i += 1
-            else:
-                break
-        if i < len(args):
-            return argv_verdict(args[i:], rest)  # env as a command runner
-        dump = True
+        dump = True  # normalized() has already unwrapped env running a command
     elif cmd == "printenv":
         names = [a for a in args if not a.startswith("-")]
         if any(looks_secret(n) for n in names):
@@ -656,16 +758,35 @@ def consumes_quietly(text):
                                            ["secret", "verify"]))
 
 
-def argv_verdict(argv, rest, text=None):
+def shell_verdict(argv, piped, stdin):
+    """A shell runs a -c string, a script file, or whatever arrives on stdin."""
+    args = argv[1:]
+    for i, a in enumerate(args):
+        if re.fullmatch(r"-[a-z]*c[a-z]*", a):
+            return env_verdict(args[i + 1]) if i + 1 < len(args) else None
+    reads_stdin = "-s" in args or not [a for a in args if not a.startswith("-")]
+    if not reads_stdin:
+        return None  # a script file: out of this guard's sight, as any program is
+    for script in stdin:
+        found = env_verdict(script)
+        if found:
+            return found
+    if piped:
+        return "cmd.shell-stdin", "a script piped into a shell"
+    return None
+
+
+def argv_verdict(argv, rest, text=None, piped=False, stdin=()):
     """The environment rules for one simple command; rest is what its output
     is piped into. Anything run through 'secret run' is left alone: that is
     the sanctioned path, and its output is scrubbed."""
+    argv = normalized(argv)
     if not argv or is_secret_run(argv):
         return None
     if argv[0] in SHELLS:
-        for i, a in enumerate(argv[1:-1], 1):
-            if re.fullmatch(r"-[a-z]*c[a-z]*", a):
-                return env_verdict(argv[i + 1])
+        return shell_verdict(argv, piped, stdin)
+    if argv[0] in ("eval", "source", "."):
+        return env_verdict(" ".join(argv[1:]))
     for check in (container_env, container_exec_env):
         found = check(argv, rest)
         if found:
@@ -687,7 +808,7 @@ def _captured_quietly(text, n, command):
         return False
     w = words(text)
     ci = command_index(w)
-    argv = w[ci:]
+    argv = normalized(w)
     for j, x in enumerate(w):
         if f"__SUB{n}__" not in x:
             continue
@@ -701,20 +822,36 @@ def _captured_quietly(text, n, command):
     return True
 
 
-def env_verdict(command, depth=0):
-    if depth > 8:
-        return None
+_depth = 0
+
+
+def env_verdict(command):
+    """Every nested command line — a substitution, a -c string, an eval —
+    comes back through here, so this is where nesting is counted. Past the
+    cap the answer is deny: what cannot be checked is not let through."""
+    global _depth
+    if _depth >= MAX_DEPTH:
+        return TOO_DEEP
+    _depth += 1
+    try:
+        return _env_verdict(command)
+    finally:
+        _depth -= 1
+
+
+def _env_verdict(command):
     pipelines, subs = scan(command)
     for pipeline in pipelines:
         for idx, text in enumerate(pipeline):
-            found = argv_verdict(argv_of(text), pipeline[idx + 1:], text)
+            found = argv_verdict(words(text), pipeline[idx + 1:], text,
+                                 piped=idx > 0, stdin=stdin_scripts(text, subs))
             if found:
                 return found
             for m in SUB.finditer(text):
                 n = int(m.group(1))
                 if n >= len(subs):
                     continue
-                inner = env_verdict(subs[n], depth + 1)
+                inner = env_verdict(subs[n])
                 if inner is None:
                     continue
                 if inner[0] == "cmd.token-print" and _captured_quietly(text, n, command):
@@ -843,9 +980,9 @@ def post_tool_use(payload, current):
     hidden = current == "enforce"
     user = (
         f"secret-guard: a credential shaped like {shapes} appeared in {where}. "
-        + ("It was redacted before the agent read it, but the raw output left the tool, so "
-           if hidden else "The agent has read it, so ")
-        + "rotate that credential."
+        + ("The agent was handed a redacted copy, but the raw output has already left the tool"
+           " and reached Claude Code's telemetry, so rotate it now."
+           if hidden else "The agent has read it, so rotate it now.")
     )
     agent = (
         f"secret-guard: {where} contained a credential shaped like {shapes}"
@@ -856,7 +993,8 @@ def post_tool_use(payload, current):
     out = {"systemMessage": user,
            "hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": agent}}
     if hidden:
-        out["hookSpecificOutput"]["updatedToolOutput"] = redacted
+        field = "updatedMCPToolOutput" if tool.startswith("mcp__") else "updatedToolOutput"
+        out["hookSpecificOutput"][field] = redacted
     print(json.dumps(out))
     return 0
 

@@ -69,3 +69,15 @@
 {"desc":"container names","tool_name":"Bash","tool_input":{"command":"docker ps --format '{{.Names}}'"}}
 {"desc":"a make target called env","tool_name":"Bash","tool_input":{"command":"make env"}}
 {"desc":"a heredoc commit message that names an environment dump","tool_name":"Bash","tool_input":{"command":"git commit -F - <<'EOF'\nDeny printenv GH_TOKEN and a bare\nenv\nEOF"}}
+{"desc":"command -v looks a name up, it runs nothing","tool_name":"Bash","tool_input":{"command":"command -v env"}}
+{"desc":"env as a shebang-style runner","tool_name":"Bash","tool_input":{"command":"/usr/bin/env python3 script.py"}}
+{"desc":"eval of an agent's own exports","tool_name":"Bash","tool_input":{"command":"eval \"$(ssh-agent -s)\""}}
+{"desc":"a script file run by bash","tool_name":"Bash","tool_input":{"command":"bash scripts/build.sh"}}
+{"desc":"a harmless here-string into a shell","tool_name":"Bash","tool_input":{"command":"bash <<< \"ls\""}}
+{"desc":"an unquoted heredoc with a harmless substitution","tool_name":"Bash","tool_input":{"command":"cat <<EOF\nbuilt $(date)\nEOF"}}
+{"desc":"a quoted heredoc keeps a substitution as literal text","tool_name":"Bash","tool_input":{"command":"cat <<'EOF' > fetch.sh\nGH_TOKEN=$(gh auth token) gh repo list\nEOF"}}
+{"desc":"arithmetic","tool_name":"Bash","tool_input":{"command":"echo $((1 + 2))"}}
+{"desc":"time in front of a build","tool_name":"Bash","tool_input":{"command":"time make test"}}
+{"desc":"nohup in front of a server","tool_name":"Bash","tool_input":{"command":"nohup npm start &"}}
+{"desc":"sudo in front of an install","tool_name":"Bash","tool_input":{"command":"sudo make install"}}
+{"desc":"sourcing a virtualenv","tool_name":"Bash","tool_input":{"command":"source .venv/bin/activate"}}
